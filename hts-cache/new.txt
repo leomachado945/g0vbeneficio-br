@@ -1,0 +1,5 @@
+date	size'/'remotesize	flags(request:Update,Range state:File response:Modified,Chunked,gZipped)	statuscode	status ('servermsg')	MIME	Etag|Date	URL	localfile	(from URL)
+21:17:51	146/146	---M--	404	error ('Not%20Found')	text/html	date:Fri,%2020%20Mar%202026%2000:17:51%20GMT	https://g0vbeneficio-br.com/robots.txt		(from )
+21:17:51	10503/10503	---MCZ	200	added ('OK')	text/html	etag:W/%2269980c68-2907%22	https://g0vbeneficio-br.com/	C:/Meus%20Sites/copiasitegv/g0vbeneficio-br.com/index.html	(from )
+21:17:52	102641/102641	---M-Z	200	added ('OK')	text/css	etag:%2265692999-5512%22	https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css	C:/Meus%20Sites/copiasitegv/cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css	(from https://g0vbeneficio-br.com/)
+21:17:52	2228/2228	---M--	200	added ('OK')	image/png	date:Tue,%2003%20Mar%202020%2020:15:00%20GMT	https://www.gstatic.com/recaptcha/api2/logo_48.png	C:/Meus%20Sites/copiasitegv/www.gstatic.com/recaptcha/api2/logo_48.png	(from https://g0vbeneficio-br.com/)
