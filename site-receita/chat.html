@@ -576,37 +576,23 @@ async function openPixModal() {
             nome: nomeParaEnviar || '(não informado - será Cliente Cliente)'
         });
 
-        // Chamar nova API de geração de PIX
-        const response = await fetch('api/gerar_pix.json', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                cpf: cpfParaEnviar,
-                nome: nomeParaEnviar
-            })
+        const data = await window.NitroPix.createPixPayment(customerData, {
+            amount: 138.45,
+            description: 'Pagamento de taxa de regularização',
+            itemTitle: 'Taxa de regularização',
+            orderPrefix: 'CHAT',
+            productId: 'taxa_regularizacao_13845'
         });
 
-        const data = await response.json();
-        console.log('📦 Resposta da API gerar_pix:', data);
+        console.log('📦 Resposta normalizada do gateway:', data);
 
         if (data.success && data.qrCode) {
-            // Adaptar resposta para formato esperado
-            const pixData = {
-                pixCode: data.qrCode,
-                pix_code: data.qrCode,
-                qrCodeUrl: data.qrCodeUrl,
-                transaction_id: data.transactionId,
-                orderId: data.transactionId,
-                order_id: data.transactionId,
-                amount: data.amount,
-                status: data.status
-            };
-            showPixModal(pixData);
+            showPixModal(data);
         } else {
             closePixModal();
             isGeneratingPix = false; // Liberar flag
             console.log('🔓 Flag liberada (erro na resposta)');
-            alert('Erro ao gerar PIX: ' + (data.message || 'Tente novamente.'));
+            alert('Erro ao gerar PIX. Tente novamente.');
         }
     } catch (error) {
         console.error('Erro:', error);

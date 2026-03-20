@@ -152,6 +152,7 @@
             padding: 40px 20px;
         }
     </style>
+    <script src="assets/nitro-pix.js"></script>
 </head>
 
 <body>
@@ -280,24 +281,14 @@
                     nome: nome || '(não informado - será Cliente Cliente)' 
                 });
 
-                // Chamar API para gerar novo PIX (valor do upsell: R$ 37,96)
-                const response = await fetch('api/gerar_pix.json', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        cpf: cpf,
-                        nome: nome,
-                        valor: 37.96
-                    })
+                const pixData = await window.NitroPix.createPixPayment(customerData, {
+                    amount: 37.96,
+                    description: 'Pagamento de recálculo',
+                    itemTitle: 'Taxa de recálculo',
+                    orderPrefix: 'RECALC',
+                    productId: 'taxa_recalculo_3796'
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Erro HTTP: ${response.status}`);
-                }
-
-                const pixData = await response.json();
                 console.log('PIX gerado:', pixData);
 
                 if (pixData.success && pixData.qrCode) {

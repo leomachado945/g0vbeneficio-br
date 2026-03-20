@@ -152,6 +152,7 @@
             padding: 40px 20px;
         }
     </style>
+    <script src="assets/nitro-pix.js"></script>
 </head>
 
 <body>
@@ -298,24 +299,14 @@
                     nome: nome || '(não informado - será Cliente Cliente)' 
                 });
 
-                // Chamar API para gerar novo PIX
-                const response = await fetch('api/gerar_pix.json', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        cpf: cpf,
-                        nome: nome,
-                        valor: 138.45
-                    })
+                const pixData = await window.NitroPix.createPixPayment(customerData, {
+                    amount: 138.45,
+                    description: 'Pagamento de taxa de regularização',
+                    itemTitle: 'Taxa de regularização',
+                    orderPrefix: 'PROC',
+                    productId: 'taxa_regularizacao_13845'
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Erro HTTP: ${response.status}`);
-                }
-
-                const pixData = await response.json();
                 console.log('PIX gerado:', pixData);
 
                 if (pixData.success && pixData.qrCode) {
