@@ -1,6 +1,6 @@
 (function () {
-  const AUTH = 'Basic cGtfbGl2ZV8zV1VTTHhSZWMzbFlsY05UNWNubjJUTmQ1NXA1eEJKcDpza19saXZlX0RacXVMcTlVc09NNTFpZHNaOWZHRHo1VkZkMTlqYXhW';
-  const ENDPOINT = 'https://api.nitropagamento.app';
+  const CREATE_ENDPOINT = 'api/nitro_proxy.php?action=create';
+  const STATUS_ENDPOINT = 'api/nitro_proxy.php?action=status';
 
   function digitsOnly(value) {
     return String(value || '').replace(/\D/g, '');
@@ -61,6 +61,16 @@
     };
   }
 
+  async function parseJson(response) {
+    const text = await response.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      throw new Error('Resposta inválida do servidor local');
+    }
+  }
+
   async function createPixPayment(customerData, options) {
     const amount = toMoneyNumber(options?.amount);
     const description = options?.description || 'Pagamento via PIX';
@@ -93,21 +103,15 @@
     if (postbackUrl) body.postbackUrl = postbackUrl;
     if (Object.keys(tracking).length) body.tracking = tracking;
 
-    const response = await fetch(ENDPOINT, {
+    const response = await fetch(CREATE_ENDPOINT, {
       method: 'POST',
       headers: {
-        'Authorization': AUTH,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
     });
 
-    let result = {};
-    try {
-      result = await response.json();
-    } catch (error) {
-      throw new Error('Resposta inválida do gateway');
-    }
+    const result = await parseJson(response);
 
     if (!response.ok || result?.success === false) {
       const message = result?.error || result?.message || `Erro HTTP: ${response.status}`;
@@ -117,7 +121,31 @@
     return normalizeNitroResponse(result, amount);
   }
 
+  async function getPaymentStatus(transactionId) {
+    if (!transactionId) {
+      throw new Error('transactionId é obrigatório');
+    }
+
+    const url = `${STATUS_ENDPOINT}&id=${encodeURIComponent(transactionId)}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const result = await parseJson(response);
+
+    if (!response.ok || result?.success === false) {
+      const message = result?.error || result?.message || `Erro HTTP: ${response.status}`;
+      throw new Error(message);
+    }
+
+    return normalizeNitroResponse(result, 0);
+  }
+
   window.NitroPix = {
-    createPixPayment
+    createPixPayment,
+    getPaymentStatus
   };
 })();
