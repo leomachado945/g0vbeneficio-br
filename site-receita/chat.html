@@ -15,7 +15,6 @@
     <script src="https://cdn.tailwindcss.com/"></script>
     <!-- QR Code Generator -->
     <script src="../../cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
-    <script src="assets/nitro-pix.js"></script>
     <!-- CDN Fonts - Rawline -->
     <link href="https://fonts.cdnfonts.com/css/rawline" rel="stylesheet">
     <script>
@@ -566,17 +565,6 @@ async function openPixModal() {
         
         console.log('📊 Dados do localStorage:', customerData);
         
-        // Preparar dados para envio
-        // Se não tiver nome, o backend usará "Cliente Cliente"
-        // Se não tiver CPF, não enviar (backend não incluirá no payload)
-        const cpfParaEnviar = customerData.cpf || ''; // Enviar vazio se não tiver
-        const nomeParaEnviar = customerData.nome || ''; // Enviar vazio, backend usará "Cliente Cliente"
-        
-        console.log('✅ Enviando para API:', {
-            cpf: cpfParaEnviar || '(não informado)',
-            nome: nomeParaEnviar || '(não informado - será Cliente Cliente)'
-        });
-
         const data = await window.NitroPix.createPixPayment(customerData, {
             amount: 138.45,
             description: 'Pagamento de taxa de regularização',
@@ -584,14 +572,13 @@ async function openPixModal() {
             orderPrefix: 'CHAT',
             productId: 'taxa_regularizacao_13845'
         });
-
-        console.log('📦 Resposta normalizada do gateway:', data);
+        console.log('📦 Resposta da API PIX:', data);
 
         if (data.success && data.qrCode) {
             showPixModal(data);
         } else {
             closePixModal();
-            isGeneratingPix = false; // Liberar flag
+            isGeneratingPix = false;
             console.log('🔓 Flag liberada (erro na resposta)');
             alert('Erro ao gerar PIX. Tente novamente.');
         }
@@ -862,18 +849,13 @@ function startPaymentMonitoring(transactionId) {
     // Check payment status every 2 seconds
     window.paymentMonitorInterval = setInterval(async () => {
         try {
-            const statusUrl = `api/verificar_pagamento.php?transactionId=${encodeURIComponent(transactionId)}`;
+            const statusUrl = `/api/status-pix?transactionId=${encodeURIComponent(transactionId)}`;
             console.log(`🔄 Verificando status da transação: ${transactionId}`);
             console.log(`📡 URL de verificação: ${statusUrl}`);
             
-            const response = await fetch(statusUrl);
+            const statusData = await window.NitroPix.getPaymentStatus(transactionId);
             
-            if (!response.ok) {
-                console.error(`❌ Erro HTTP ${response.status}: ${response.statusText}`);
-                return;
-            }
             
-            const statusData = await response.json();
             console.log('📊 Status recebido:', statusData);
             
             // Verificar se a API retornou sucesso
@@ -1228,17 +1210,12 @@ async function handlePaymentConfirmation(transactionId, confirmed) {
         console.log('✅ Usuário confirmou pagamento, verificando status...');
         
         try {
-            const statusUrl = `get-payment.php?transactionId=${encodeURIComponent(transactionId)}`;
+            const statusUrl = `/api/status-pix?transactionId=${encodeURIComponent(transactionId)}`;
             console.log(`🔄 Verificação manual do status via get-payment.php: ${statusUrl}`);
             
-            const response = await fetch(statusUrl);
+            const statusData = await window.NitroPix.getPaymentStatus(transactionId);
             
-            if (!response.ok) {
-                console.error(`❌ Erro HTTP ${response.status}: ${response.statusText}`);
-                return;
-            }
             
-            const statusData = await response.json();
             console.log('📊 Status da verificação manual:', statusData);
             
             // Extrai status como no checkout

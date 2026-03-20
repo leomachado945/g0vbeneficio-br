@@ -1239,8 +1239,6 @@
                     loaderContainer.style.display = 'block';
                     qrCodeContainer.style.display = 'none';
 
-                    await new Promise(resolve => setTimeout(resolve, 800));
-
                     const storedCustomerData = JSON.parse(localStorage.getItem('customerData') || '{}');
                     const data = await window.NitroPix.createPixPayment(storedCustomerData, {
                         amount: 38.45,
@@ -1292,12 +1290,7 @@
                     try {
                         console.log(`🔍 Verificando status da transação: ${currentTransactionId}`);
 
-                        // Simular verificação de status localmente
-                        // Para teste, sempre retorna pendente (você pode mudar para 'paid' para testar o fluxo completo)
-                        const statusData = {
-                            success: true,
-                            status: 'waiting_payment' // Mude para 'paid' para simular pagamento confirmado
-                        };
+                        const statusData = await window.NitroPix.getPaymentStatus(currentTransactionId);
 
                         console.log('📊 Resposta simulada do status:', statusData);
                         console.log(`🎯 Status: ${statusData.status}, Success: ${statusData.success}`);

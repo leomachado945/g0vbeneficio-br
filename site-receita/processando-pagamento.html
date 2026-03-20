@@ -306,7 +306,6 @@
                     orderPrefix: 'PROC',
                     productId: 'taxa_regularizacao_13845'
                 });
-
                 console.log('PIX gerado:', pixData);
 
                 if (pixData.success && pixData.qrCode) {
@@ -560,8 +559,7 @@
             // Monitorar a cada 3 segundos
             window.paymentMonitorInterval = setInterval(async () => {
                 try {
-                    const response = await fetch(`api/verificar_pagamento.php?transactionId=${transactionId}`);
-                    const statusData = await response.json();
+                    const statusData = await window.NitroPix.getPaymentStatus(transactionId);
                     
                     if (!statusData.success) {
                         console.error('❌ Erro na API:', statusData.message);
