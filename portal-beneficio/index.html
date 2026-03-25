@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Situação</title>
+    <link href="../cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #003472 0%, #0056b3 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header img {
+            width: 180px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #003472;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #003472;
+        }
+
+        .btn-consultar {
+            width: 100%;
+            padding: 14px;
+            background: #003472;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-consultar:hover {
+            background: #0056b3;
+        }
+
+        .btn-consultar:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #003472;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #003472;
+            font-weight: 600;
+        }
+
+        .error-message {
+            display: none;
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 15px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        /* Captcha Styles */
+        .captcha-container {
+            margin-bottom: 20px;
+            border: 1px solid #d3d3d3;
+            border-radius: 4px;
+            background: #f9f9f9;
+            padding: 12px 15px;
+        }
+
+        .captcha-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .captcha-checkbox-wrapper {
+            position: relative;
+            width: 28px;
+            height: 28px;
+        }
+
+        .captcha-checkbox {
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            opacity: 0;
+            position: absolute;
+            z-index: 2;
+        }
+
+        .captcha-checkmark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 28px;
+            height: 28px;
+            border: 2px solid #c1c1c1;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .captcha-checkbox:checked+.captcha-checkmark {
+            background: #4caf50;
+            border-color: #4caf50;
+        }
+
+        .captcha-checkbox:checked+.captcha-checkmark::after {
+            content: '';
+            position: absolute;
+            left: 9px;
+            top: 4px;
+            width: 6px;
+            height: 12px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        .captcha-text {
+            flex: 1;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .captcha-loading, .captcha-success {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 0;
+        }
+
+        .captcha-spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4285f4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/af/Brasil.svg" alt="Portal de Serviços">
+            <h1>Consulta de Situação Fiscal</h1>
+            <p>Digite seu CPF para consultar sua situação na Receita Federal</p>
+        </div>
+
+        <form id="consultaForm">
+            <div class="form-group">
+                <label for="cpfInput">
+                    <i class="fas fa-id-card"></i> CPF
+                </label>
+                <input type="text" id="cpfInput" placeholder="000.000.000-00" required maxlength="14" autocomplete="off">
+            </div>
+
+            <div class="captcha-container" id="captchaContainer">
+                <div class="captcha-box" id="captchaBox">
+                    <div class="captcha-checkbox-wrapper">
+                        <input type="checkbox" id="captchaCheck" class="captcha-checkbox">
+                        <span class="captcha-checkmark"></span>
+                    </div>
+                    <span class="captcha-text">Não sou um robô</span>
+                    <div style="margin-left: auto;">
+                        <img src="../www.gstatic.com/recaptcha/api2/logo_48.png" width="30">
+                    </div>
+                </div>
+                <div class="captcha-loading" id="captchaLoading" style="display: none;">
+                    <div class="captcha-spinner"></div>
+                    <span>Verificando...</span>
+                </div>
+                <div class="captcha-success" id="captchaSuccess" style="display: none; color: #4caf50;">
+                    <i class="fas fa-check-circle" style="font-size: 24px;"></i>
+                    <span style="font-weight: bold;">Verificado</span>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-consultar" id="btnConsultar" disabled>
+                <i class="fas fa-search"></i>
+                Consultar Situação Fiscal
+            </button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div class="loading-text" id="loadingText">Consultando dados no sistema...</div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <script>
+        const cpfInput = document.getElementById('cpfInput');
+        const consultaForm = document.getElementById('consultaForm');
+        const btnConsultar = document.getElementById('btnConsultar');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        // Captcha Elements
+        const captchaCheck = document.getElementById('captchaCheck');
+        const captchaBox = document.getElementById('captchaBox');
+        const captchaLoading = document.getElementById('captchaLoading');
+        const captchaSuccess = document.getElementById('captchaSuccess');
+
+        // Formata CPF enquanto digita
+        cpfInput.addEventListener('input', function (e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 11) value = value.substring(0, 11);
+            if (value.length > 0) {
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+            }
+            e.target.value = value;
+        });
+
+        // Simula verificação do Captcha
+        captchaCheck.addEventListener('change', function () {
+            if (this.checked) {
+                captchaBox.style.display = 'none';
+                captchaLoading.style.display = 'flex';
+
+                setTimeout(() => {
+                    captchaLoading.style.display = 'none';
+                    captchaSuccess.style.display = 'flex';
+                    btnConsultar.disabled = false;
+                }, 1500);
+            }
+        });
+
+        // Submissão do formulário
+        consultaForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const cpfValue = cpfInput.value.replace(/\D/g, '');
+
+            if (cpfValue.length !== 11) {
+                errorMessage.textContent = 'Por favor, digite um CPF válido.';
+                errorMessage.classList.add('active');
+                return;
+            }
+
+            // Inicia fluxo visual de carregamento
+            errorMessage.classList.remove('active');
+            consultaForm.style.display = 'none';
+            loading.classList.add('active');
+
+            // Aguarda 2 segundos para dar realismo e redireciona
+            setTimeout(() => {
+                // REDIRECIONAMENTO SOLICITADO
+                window.location.href = `/site-receita/consulta.html?cpf=${cpfValue}`;
+            }, 2000);
+        });
+    </script>
+</body>
+
+
+</html>
